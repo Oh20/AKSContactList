@@ -131,7 +131,7 @@ app.MapPut("/editcontatos/{name}", async (string name, [FromBody] ContactDto con
 
         // Declara��o da fila
         channel.QueueDeclare(queue: "contact_update_queue",
-                             durable: true, // Mudado para true para persist�ncia
+                             durable: false,
                              exclusive: false,
                              autoDelete: false,
                              arguments: null);

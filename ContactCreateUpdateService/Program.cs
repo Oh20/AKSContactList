@@ -10,7 +10,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configuração de logging
+// Configuraï¿½ï¿½o de logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
@@ -23,13 +23,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Configuração do RabbitMQ com valores padrão para Kubernetes
+// Configuraï¿½ï¿½o do RabbitMQ com valores padrï¿½o para Kubernetes
 var rabbitMqHost = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "rabbitmq-service";
 var rabbitMqPort = int.Parse(Environment.GetEnvironmentVariable("RABBITMQ_PORT") ?? "5672");
 var rabbitMqUser = Environment.GetEnvironmentVariable("RABBITMQ_USER") ?? "guest";
 var rabbitMqPassword = Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest";
 
-// Log da configuração para debugging
+// Log da configuraï¿½ï¿½o para debugging
 app.Logger.LogInformation($"RabbitMQ Configuration - Host: {rabbitMqHost}, Port: {rabbitMqPort}, User: {rabbitMqUser}");
 
 // Health check endpoint
@@ -39,7 +39,7 @@ app.MapPost("/contatos", async ([FromBody] ContactDto contact) =>
 {
     try
     {
-        // Validação de modelo
+        // Validaï¿½ï¿½o de modelo
         var validationContext = new ValidationContext(contact, null, null);
         var validationResults = new List<ValidationResult>();
 
@@ -49,7 +49,7 @@ app.MapPost("/contatos", async ([FromBody] ContactDto contact) =>
             return Results.BadRequest(new { Errors = errors });
         }
 
-        // Configuração do RabbitMQ com timeout
+        // Configuraï¿½ï¿½o do RabbitMQ com timeout
         var factory = new ConnectionFactory()
         {
             HostName = rabbitMqHost,
@@ -64,18 +64,18 @@ app.MapPost("/contatos", async ([FromBody] ContactDto contact) =>
         using var connection = factory.CreateConnection();
         using var channel = connection.CreateModel();
 
-        // Declaração da fila
+        // Declaraï¿½ï¿½o da fila
         channel.QueueDeclare(queue: "contact_queue",
-                             durable: true, // Mudado para true para persistência
+                             durable: false,
                              exclusive: false,
                              autoDelete: false,
                              arguments: null);
 
-        // Serialização do objeto de contato para JSON
+        // Serializaï¿½ï¿½o do objeto de contato para JSON
         var message = System.Text.Json.JsonSerializer.Serialize(contact);
         var body = Encoding.UTF8.GetBytes(message);
 
-        // Propriedades da mensagem para persistência
+        // Propriedades da mensagem para persistï¿½ncia
         var properties = channel.CreateBasicProperties();
         properties.Persistent = true;
 
@@ -85,12 +85,12 @@ app.MapPost("/contatos", async ([FromBody] ContactDto contact) =>
                              basicProperties: properties,
                              body: body);
 
-        app.Logger.LogInformation($"Contato {contact.Nome} enviado para fila de criação");
-        return Results.Ok(new { Message = "Contato direcionado à fila de criação", ContactName = contact.Nome });
+        app.Logger.LogInformation($"Contato {contact.Nome} enviado para fila de criaï¿½ï¿½o");
+        return Results.Ok(new { Message = "Contato direcionado ï¿½ fila de criaï¿½ï¿½o", ContactName = contact.Nome });
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Erro ao processar criação de contato");
+        app.Logger.LogError(ex, "Erro ao processar criaï¿½ï¿½o de contato");
         return Results.Problem(
             detail: ex.Message,
             statusCode: 500,
@@ -103,18 +103,18 @@ app.MapPut("/editcontatos/{name}", async (string name, [FromBody] ContactDto con
 {
     try
     {
-        // Validação básica
+        // Validaï¿½ï¿½o bï¿½sica
         if (string.IsNullOrWhiteSpace(contact.Nome) ||
             string.IsNullOrWhiteSpace(contact.Telefone) ||
             string.IsNullOrWhiteSpace(contact.Email))
         {
-            return Results.BadRequest(new { Error = "Nome, Telefone e Email são obrigatórios." });
+            return Results.BadRequest(new { Error = "Nome, Telefone e Email sï¿½o obrigatï¿½rios." });
         }
 
-        // Atualiza o nome do contato com o parâmetro da URL
+        // Atualiza o nome do contato com o parï¿½metro da URL
         contact.Nome = name;
 
-        // Configuração do RabbitMQ
+        // Configuraï¿½ï¿½o do RabbitMQ
         var factory = new ConnectionFactory()
         {
             HostName = rabbitMqHost,
@@ -129,33 +129,33 @@ app.MapPut("/editcontatos/{name}", async (string name, [FromBody] ContactDto con
         using var connection = factory.CreateConnection();
         using var channel = connection.CreateModel();
 
-        // Declaração da fila
+        // Declaraï¿½ï¿½o da fila
         channel.QueueDeclare(queue: "contact_update_queue",
-                             durable: true, // Mudado para true para persistência
+                             durable: true, // Mudado para true para persistï¿½ncia
                              exclusive: false,
                              autoDelete: false,
                              arguments: null);
 
-        // Serialização do objeto
+        // Serializaï¿½ï¿½o do objeto
         var message = System.Text.Json.JsonSerializer.Serialize(contact);
         var body = Encoding.UTF8.GetBytes(message);
 
-        // Propriedades da mensagem para persistência
+        // Propriedades da mensagem para persistï¿½ncia
         var properties = channel.CreateBasicProperties();
         properties.Persistent = true;
 
-        // Publicação na fila
+        // Publicaï¿½ï¿½o na fila
         channel.BasicPublish(exchange: "",
                              routingKey: "contact_update_queue",
                              basicProperties: properties,
                              body: body);
 
-        app.Logger.LogInformation($"Contato {name} enviado para fila de atualização");
-        return Results.Ok(new { Message = $"Contato {name} enviado para fila de atualização" });
+        app.Logger.LogInformation($"Contato {name} enviado para fila de atualizaï¿½ï¿½o");
+        return Results.Ok(new { Message = $"Contato {name} enviado para fila de atualizaï¿½ï¿½o" });
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Erro ao processar atualização de contato");
+        app.Logger.LogError(ex, "Erro ao processar atualizaï¿½ï¿½o de contato");
         return Results.Problem(
             detail: ex.Message,
             statusCode: 500,
@@ -167,7 +167,7 @@ app.MapPut("/editcontatos/{name}", async (string name, [FromBody] ContactDto con
 app.UseAuthorization();
 app.MapControllers();
 
-// Configuração para escutar em todas as interfaces na porta 8080
+// Configuraï¿½ï¿½o para escutar em todas as interfaces na porta 8080
 app.Urls.Clear();
 app.Urls.Add("http://0.0.0.0:8080");
 
@@ -176,15 +176,15 @@ app.Run();
 // DTO para o contato
 public class ContactDto
 {
-    [Required(ErrorMessage = "Nome é obrigatório")]
+    [Required(ErrorMessage = "Nome ï¿½ obrigatï¿½rio")]
     [StringLength(100, MinimumLength = 3, ErrorMessage = "Nome deve ter entre 3 e 100 caracteres")]
     public string Nome { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Telefone é obrigatório")]
-    [Phone(ErrorMessage = "Formato de telefone inválido")]
+    [Required(ErrorMessage = "Telefone ï¿½ obrigatï¿½rio")]
+    [Phone(ErrorMessage = "Formato de telefone invï¿½lido")]
     public string Telefone { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Email é obrigatório")]
-    [EmailAddress(ErrorMessage = "Formato de email inválido")]
+    [Required(ErrorMessage = "Email ï¿½ obrigatï¿½rio")]
+    [EmailAddress(ErrorMessage = "Formato de email invï¿½lido")]
     public string Email { get; set; } = string.Empty;
 }

@@ -4,7 +4,7 @@ metadata:
   name: dbconsumer
   namespace: messaging
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: dbconsumer

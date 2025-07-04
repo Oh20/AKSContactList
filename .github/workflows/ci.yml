@@ -98,7 +98,7 @@ jobs:
     - name: Build and push ContactCreate
       uses: docker/build-push-action@v5
       with:
-        context: ./ContactCreateUpdateService
+        context: .
         file: ./contactCreateDockerfile
         push: true
         tags: |
@@ -108,7 +108,7 @@ jobs:
     - name: Build and push ContactDelete
       uses: docker/build-push-action@v5
       with:
-        context: ./ContactDeleteService
+        context: .
         file: ./contactDeleteDockerfile
         push: true
         tags: |
@@ -118,7 +118,7 @@ jobs:
     - name: Build and push ContactQuery
       uses: docker/build-push-action@v5
       with:
-        context: ./ContactQueryService
+        context: .
         file: ./contactQueryDockerfile
         push: true
         tags: |
@@ -128,7 +128,7 @@ jobs:
     - name: Build and push DBConsumer
       uses: docker/build-push-action@v5
       with:
-        context: ./DBConsumer
+        context: .
         file: ./dbConsumerDockerfile
         push: true
         tags: |

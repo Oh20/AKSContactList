@@ -1,0 +1,67 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ContactQueryService",
+    "version": "1.0"
+  },
+  "paths": {
+    "/contatos": {
+      "get": {
+        "tags": [
+          "ContactQueryService"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/contatos/{id}": {
+      "get": {
+        "tags": [
+          "ContactQueryService"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/contacts/by-ddd/{ddd}": {
+      "get": {
+        "tags": [
+          "ContactQueryService"
+        ],
+        "parameters": [
+          {
+            "name": "ddd",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  },
+  "components": { }
+}

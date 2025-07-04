@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: create-contact-deployment
+  namespace: messaging
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: create-contact
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: create-contact
+    spec:
+      containers:
+        - name: create-contact-ms
+          image: oh20/contactmicroservice-create:latest
+          ports:
+            - containerPort: 80  # Porta correta da aplicação
+          env:
+            # Configurações do RabbitMQ usando ConfigMap existente
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_PORT
+            - name: RABBITMQ_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_PASSWORD
+            - name: RABBITMQ_VHOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: RABBITMQ_VHOST
+            # Configurações do SQL Server
+            - name: SQL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: sql-connection-secret
+                  key: username
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sql-connection-secret
+                  key: password
+          # Health checks removidos - endpoint /health não existe na aplicação
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

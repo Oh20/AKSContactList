@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sql-connection-secret
+  namespace: messaging
+type: Opaque
+data:
+  username: YXp1cmVhZG1pbgo=
+  password: VGVjbm9sb2dpYUBAMjAyNQo=

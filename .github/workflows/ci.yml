@@ -1,0 +1,45 @@
+name: .NET Test Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    name: Executando o job de Teste
+    runs-on: self-hosted # O runner tem de ser proprio, devido necessidade de liberação no banco por endereço de IP
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v2
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    # Executa os testes para ContactCreateUpdateService
+    - name: Run tests for ContactCreateUpdateService
+      run: dotnet test ./ContactCreateUpdateService.Tests/ContactCreateUpdateService.Tests.csproj --no-build --verbosity normal
+
+    # Executa os testes para ContactQueryService
+    - name: Run tests for ContactQueryService
+      run: dotnet test ./ContactQueryService.Tests/ContactQueryService.Tests.csproj --no-build --verbosity normal
+
+    # Executa os testes para DBConsumerService
+    - name: Run tests for DBConsumerService
+      run: dotnet test ./DBConsumer.Tests/DBConsumer.Tests.csproj --no-build --verbosity normal
+
+    # Executa os testes para DatabaseConnectionTests
+    - name: Run tests for DatabaseConnectionTests
+      run: dotnet test ./DatabaseConnectionTests/DatabaseConnectionTests.csproj --no-build --verbosity normal
+
+    # Publica os resultados dos testes
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: '**/TestResults/*.trx'

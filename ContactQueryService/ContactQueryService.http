@@ -1,0 +1,6 @@
+@ContactQueryService_HostAddress = http://localhost:5170
+
+GET {{ContactQueryService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

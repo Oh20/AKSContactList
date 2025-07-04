@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: create-contact-service
+  namespace: messaging
+spec:
+  type: LoadBalancer
+  selector:
+    app: create-contact
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080

@@ -99,6 +99,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./ContactCreateUpdateService
+        file: ./contactCreateDockerfile
         push: true
         tags: |
           ${{ env.REGISTRY }}/contactmicroservice-create:${{ steps.image-tag.outputs.tag }}
@@ -108,6 +109,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./ContactDeleteService
+        file: ./contactDeleteDockerfile
         push: true
         tags: |
           ${{ env.REGISTRY }}/contactmicroservice-delete:${{ steps.image-tag.outputs.tag }}
@@ -117,6 +119,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./ContactQueryService
+        file: ./contactQueryDockerfile
         push: true
         tags: |
           ${{ env.REGISTRY }}/contactmicroservice-query:${{ steps.image-tag.outputs.tag }}
@@ -126,6 +129,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./DBConsumer
+        file: ./dbConsumerDockerfile
         push: true
         tags: |
           ${{ env.REGISTRY }}/contactmicroservice-dbconsumer:${{ steps.image-tag.outputs.tag }}

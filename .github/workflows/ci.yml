@@ -27,7 +27,7 @@ jobs:
   # Job de Build e Testes
   build-and-test:
     name: Build and Test All Services
-    runs-on: self-hosted # Mantendo como self-hosted conforme seu exemplo
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code

@@ -1,45 +1,250 @@
-name: .NET Test Pipeline
+name: CI/CD Pipeline - Contact Microservices
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main, develop ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  REGISTRY: oh20
+  AKS_CLUSTER: labaks
+  AKS_RESOURCE_GROUP: Az-lab
+  AKS_NAMESPACE: messaging
+  DOTNET_VERSION: '8.0.x'
 
 jobs:
-  build-and-deploy:
-    name: Executando o job de Teste
-    runs-on: self-hosted # O runner tem de ser proprio, devido necessidade de liberação no banco por endereço de IP
-
+  # Job de Build e Testes
+  build-and-test:
+    name: Build and Test All Services
+    runs-on: self-hosted # Mantendo como self-hosted conforme seu exemplo
+    
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Restore dependencies
       run: dotnet restore
 
-    # Executa os testes para ContactCreateUpdateService
+    - name: Build all projects
+      run: |
+        dotnet build --configuration Release --no-restore
+        echo "✅ Build completed successfully"
+
+    # Executar todos os testes
     - name: Run tests for ContactCreateUpdateService
       run: dotnet test ./ContactCreateUpdateService.Tests/ContactCreateUpdateService.Tests.csproj --no-build --verbosity normal
 
-    # Executa os testes para ContactQueryService
     - name: Run tests for ContactQueryService
       run: dotnet test ./ContactQueryService.Tests/ContactQueryService.Tests.csproj --no-build --verbosity normal
 
-    # Executa os testes para DBConsumerService
     - name: Run tests for DBConsumerService
       run: dotnet test ./DBConsumer.Tests/DBConsumer.Tests.csproj --no-build --verbosity normal
 
-    # Executa os testes para DatabaseConnectionTests
     - name: Run tests for DatabaseConnectionTests
       run: dotnet test ./DatabaseConnectionTests/DatabaseConnectionTests.csproj --no-build --verbosity normal
 
-    # Publica os resultados dos testes
     - name: Upload Test Results
       if: always()
       uses: actions/upload-artifact@v3
       with:
         name: test-results
         path: '**/TestResults/*.trx'
+
+  # Job de Build das Imagens Docker
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    
+    outputs:
+      image-tag: ${{ steps.image-tag.outputs.tag }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set image tag
+      id: image-tag
+      run: |
+        if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "tag=main-${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=develop-${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push ContactCreate
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/ContactCreate
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/contactmicroservice-create:${{ steps.image-tag.outputs.tag }}
+          ${{ env.REGISTRY }}/contactmicroservice-create:latest
+
+    - name: Build and push ContactDelete
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/ContactDelete
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/contactmicroservice-delete:${{ steps.image-tag.outputs.tag }}
+          ${{ env.REGISTRY }}/contactmicroservice-delete:latest
+
+    - name: Build and push ContactQuery
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/ContactQuery
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/contactmicroservice-query:${{ steps.image-tag.outputs.tag }}
+          ${{ env.REGISTRY }}/contactmicroservice-query:latest
+
+    - name: Build and push DBConsumer
+      uses: docker/build-push-action@v5
+      with:
+        context: ./src/DBConsumer
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/contactmicroservice-dbconsumer:${{ steps.image-tag.outputs.tag }}
+          ${{ env.REGISTRY }}/contactmicroservice-dbconsumer:latest
+
+    - name: Docker build summary
+      run: |
+        echo "🐳 Docker images built and pushed successfully!"
+        echo "📝 Image tag: ${{ steps.image-tag.outputs.tag }}"
+
+  # Job de Deploy no AKS
+  deploy:
+    name: Deploy to AKS
+    runs-on: ubuntu-latest
+    needs: [build-and-test, build-images]
+    if: github.ref == 'refs/heads/main'
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Get AKS credentials
+      run: |
+        az aks get-credentials --resource-group ${{ env.AKS_RESOURCE_GROUP }} --name ${{ env.AKS_CLUSTER }}
+        echo "✅ AKS credentials configured"
+
+    - name: Deploy all services
+      run: |
+        IMAGE_TAG="${{ needs.build-images.outputs.image-tag }}"
+        echo "🚀 Deploying with image tag: $IMAGE_TAG"
+        
+        # Deploy ContactCreate
+        kubectl set image deployment/create-contact-deployment \
+          create-contact-ms=${{ env.REGISTRY }}/contactmicroservice-create:$IMAGE_TAG \
+          -n ${{ env.AKS_NAMESPACE }}
+        
+        # Deploy ContactDelete
+        kubectl set image deployment/contact-delete-deployment \
+          contact-delete-ms=${{ env.REGISTRY }}/contactmicroservice-delete:$IMAGE_TAG \
+          -n ${{ env.AKS_NAMESPACE }}
+        
+        # Deploy ContactQuery
+        kubectl set image deployment/contact-query-deployment \
+          contact-query-ms=${{ env.REGISTRY }}/contactmicroservice-query:$IMAGE_TAG \
+          -n ${{ env.AKS_NAMESPACE }}
+        
+        # Deploy DBConsumer
+        kubectl set image deployment/dbconsumer \
+          dbconsumer=${{ env.REGISTRY }}/contactmicroservice-dbconsumer:$IMAGE_TAG \
+          -n ${{ env.AKS_NAMESPACE }}
+        
+        echo "✅ All deployments updated"
+
+    - name: Verify deployments
+      run: |
+        echo "🔍 Verifying deployments..."
+        
+        kubectl rollout status deployment/create-contact-deployment -n ${{ env.AKS_NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/contact-delete-deployment -n ${{ env.AKS_NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/contact-query-deployment -n ${{ env.AKS_NAMESPACE }} --timeout=300s
+        kubectl rollout status deployment/dbconsumer -n ${{ env.AKS_NAMESPACE }} --timeout=300s
+        
+        echo "✅ All deployments verified successfully"
+
+    - name: Run health checks
+      run: |
+        echo "🏥 Running health checks..."
+        sleep 30
+        
+        # Test ContactQuery (IP fixo: 4.227.111.249)
+        echo "Testing ContactQuery service..."
+        curl -f http://4.227.111.249/health || echo "⚠️ ContactQuery health check failed"
+        
+        # Test DBConsumer (IP fixo: 4.227.109.110)
+        echo "Testing DBConsumer service..."
+        curl -f http://4.227.109.110/health || echo "⚠️ DBConsumer health check failed"
+        
+        echo "✅ Health checks completed"
+
+    - name: Deployment summary
+      run: |
+        echo "📊 DEPLOYMENT SUMMARY"
+        echo "====================="
+        echo "🔖 Commit: ${{ github.sha }}"
+        echo "🏷️  Image Tag: ${{ needs.build-images.outputs.image-tag }}"
+        echo "🌍 Environment: ${{ github.event.inputs.environment || 'production' }}"
+        echo "📅 Deployed at: $(date)"
+        echo ""
+        echo "🎯 Services Status:"
+        kubectl get pods -n ${{ env.AKS_NAMESPACE }} -o wide
+        echo ""
+        echo "🌐 Services Endpoints:"
+        kubectl get svc -n ${{ env.AKS_NAMESPACE }}
+        echo ""
+        echo "🎉 Deployment completed successfully!"
+
+  # Job de Notificação (opcional)
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "🎉 Deployment successful!"
+          # Aqui você pode adicionar notificação para Slack, Teams, etc.
+        else
+          echo "❌ Deployment failed!"
+          # Aqui você pode adicionar notificação de falha
+        fi

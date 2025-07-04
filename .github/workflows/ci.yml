@@ -98,7 +98,7 @@ jobs:
     - name: Build and push ContactCreate
       uses: docker/build-push-action@v5
       with:
-        context: ./src/ContactCreate
+        context: ./src/ContactCreateUpdateService
         push: true
         tags: |
           ${{ env.REGISTRY }}/contactmicroservice-create:${{ steps.image-tag.outputs.tag }}
@@ -107,7 +107,7 @@ jobs:
     - name: Build and push ContactDelete
       uses: docker/build-push-action@v5
       with:
-        context: ./src/ContactDelete
+        context: ./src/ContactDeleteService
         push: true
         tags: |
           ${{ env.REGISTRY }}/contactmicroservice-delete:${{ steps.image-tag.outputs.tag }}
@@ -116,7 +116,7 @@ jobs:
     - name: Build and push ContactQuery
       uses: docker/build-push-action@v5
       with:
-        context: ./src/ContactQuery
+        context: ./src/ContactQueryService
         push: true
         tags: |
           ${{ env.REGISTRY }}/contactmicroservice-query:${{ steps.image-tag.outputs.tag }}

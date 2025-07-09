@@ -12,7 +12,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configuração do DbContext lendo da variável de ambiente
+// Configuraï¿½ï¿½o do DbContext lendo da variï¿½vel de ambiente
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var connectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING")
@@ -23,7 +23,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 
-// Configuração RabbitMQ com fallbacks consistentes
+// Configuraï¿½ï¿½o RabbitMQ com fallbacks consistentes
 var rabbitMqHost = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "rabbitmq.messaging.svc.cluster.local";
 var rabbitMqPort = int.Parse(Environment.GetEnvironmentVariable("RABBITMQ_PORT") ?? "5672");
 var rabbitMqUser = Environment.GetEnvironmentVariable("RABBITMQ_USER") ?? "guest";
@@ -46,7 +46,7 @@ var factory = new ConnectionFactory()
 using var connection = factory.CreateConnection();
 using var channel = connection.CreateModel();
 
-//Fila de criação
+//Fila de criaï¿½ï¿½o
 channel.QueueDeclare(queue: "contact_queue",
                      durable: false,
                      exclusive: false,
@@ -77,9 +77,9 @@ consumer.Received += async (model, ea) =>
         {
             foreach (var validationResult in validationResults)
             {
-                Console.WriteLine($"Falha na validação: {validationResult.ErrorMessage}");
+                Console.WriteLine($"Falha na validaï¿½ï¿½o: {validationResult.ErrorMessage}");
             }
-            return; // Se falhar, não salvar no banco
+            return; // Se falhar, nï¿½o salvar no banco
         }
 
         using var scope = app.Services.CreateScope();
@@ -88,14 +88,14 @@ consumer.Received += async (model, ea) =>
         // Mapear o DTO para o modelo Contact
         var contact = new Contact { Nome = contactDto.Nome, Telefone = contactDto.Telefone, Email = contactDto.Email };
 
-        // Verificar duplicação de e-mail ou telefone
+        // Verificar duplicaï¿½ï¿½o de e-mail ou telefone
         var existingContact = await dbContext.Contacts
             .FirstOrDefaultAsync(c => c.Email == contact.Email || c.Telefone == contact.Telefone);
 
         if (existingContact != null)
         {
-            Console.WriteLine($"Email {contact.Email} já existente ou Telefone {contact.Telefone} em uso");
-            return; // Se duplicado, não salvar
+            Console.WriteLine($"Email {contact.Email} jï¿½ existente ou Telefone {contact.Telefone} em uso");
+            return; // Se duplicado, nï¿½o salvar
         }
 
         // Salvar o contato no banco de dados
@@ -110,9 +110,9 @@ channel.BasicConsume(queue: "contact_queue",
                      autoAck: true,
                      consumer: consumer);
 
-Console.WriteLine("Aguardando novas solicitações de criação.");
+Console.WriteLine("Aguardando novas solicitaï¿½ï¿½es de criaï¿½ï¿½o.");
 
-// Consumir fila de exclusão
+// Consumir fila de exclusï¿½o
 channel.QueueDeclare(queue: "delete_contact_queue",
                      durable: false,
                      exclusive: false,
@@ -142,16 +142,16 @@ deleteConsumer.Received += async (model, ea) =>
         }
         else
         {
-            Console.WriteLine($"Contato de ID: {contactId} Não localizado.");
+            Console.WriteLine($"Contato de ID: {contactId} Nï¿½o localizado.");
         }
     }
 };
 
 channel.BasicConsume(queue: "delete_contact_queue", autoAck: true, consumer: deleteConsumer);
 
-Console.WriteLine("Aguardando mensagens na fila de deleção.");
+Console.WriteLine("Aguardando mensagens na fila de deleï¿½ï¿½o.");
 
-// Consumir fila de atualização
+// Consumir fila de atualizaï¿½ï¿½o
 channel.QueueDeclare(queue: "contact_update_queue",
                      durable: false,
                      exclusive: false,
@@ -164,7 +164,7 @@ updateConsumer.Received += async (model, ea) =>
     var body = ea.Body.ToArray();
     var message = Encoding.UTF8.GetString(body);
 
-    Console.WriteLine($"Recebido mensagem de atualização: {message}");
+    Console.WriteLine($"Recebido mensagem de atualizaï¿½ï¿½o: {message}");
 
     // Desserializar a mensagem para o objeto ContactDto
     var contactDto = System.Text.Json.JsonSerializer.Deserialize<ContactDto>(message);
@@ -183,23 +183,25 @@ updateConsumer.Received += async (model, ea) =>
             existingContact.Telefone = contactDto.Telefone;
             existingContact.Email = contactDto.Email;
 
-            // Salvar as alterações no banco de dados
+            // Salvar as alteraï¿½ï¿½es no banco de dados
             await dbContext.SaveChangesAsync();
 
             Console.WriteLine($"Contato de Nome {contactDto.Nome} atualizado com sucesso.");
         }
         else
         {
-            Console.WriteLine($"Contato de Nome {contactDto.Nome} não localizado.");
+            Console.WriteLine($"Contato de Nome {contactDto.Nome} nï¿½o localizado.");
         }
     }
 };
 
 channel.BasicConsume(queue: "contact_update_queue", autoAck: true, consumer: updateConsumer);
 
-Console.WriteLine("Aguardando por Mensagens de Atualização!.");
+Console.WriteLine("Aguardando por Mensagens de Atualizaï¿½ï¿½o!.");
 
-app.UseHttpMetrics();  // Coleta de métricas HTTP automáticas
+app.UseHttpMetrics();  // Coleta de mï¿½tricas HTTP automï¿½ticas
+
+app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }));
 
 // Exponha o endpoint /metrics
 app.MapMetrics();
@@ -211,17 +213,17 @@ app.UseAuthorization();
 app.MapControllers();
 app.Run();
 
-// DTO utilizado para desserialização
+// DTO utilizado para desserializaï¿½ï¿½o
 public class ContactDto
 {
-    [Required(ErrorMessage = "O campo Nome é obrigatório.")]
+    [Required(ErrorMessage = "O campo Nome ï¿½ obrigatï¿½rio.")]
     public string Nome { get; set; }
 
-    [Required(ErrorMessage = "O campo Telefone é obrigatório.")]
-    [Phone(ErrorMessage = "Formato de telefone inválido.")]
+    [Required(ErrorMessage = "O campo Telefone ï¿½ obrigatï¿½rio.")]
+    [Phone(ErrorMessage = "Formato de telefone invï¿½lido.")]
     public string Telefone { get; set; }
 
-    [Required(ErrorMessage = "O campo Email é obrigatório.")]
-    [EmailAddress(ErrorMessage = "Formato de email inválido.")]
+    [Required(ErrorMessage = "O campo Email ï¿½ obrigatï¿½rio.")]
+    [EmailAddress(ErrorMessage = "Formato de email invï¿½lido.")]
     public string Email { get; set; }
 }

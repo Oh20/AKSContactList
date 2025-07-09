@@ -10,7 +10,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configuração do DbContext lendo da variável de ambiente
+// Configuraï¿½ï¿½o do DbContext lendo da variï¿½vel de ambiente
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var connectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING")
@@ -37,26 +37,26 @@ app.MapGet("/contatos", async (AppDbContext dbContext) =>
     return Results.Ok(contacts);
 });
 
-// Rota para buscar um contato específico por ID
+// Rota para buscar um contato especï¿½fico por ID
 app.MapGet("/contatos/{id}", async (int id, AppDbContext dbContext) =>
 {
     var contact = await dbContext.Contacts.FindAsync(id);
     if (contact == null)
     {
-        return Results.NotFound("Contato não localizado");
+        return Results.NotFound("Contato nï¿½o localizado");
     }
     return Results.Ok(contact);
 });
 
 app.MapGet("/contacts/by-ddd/{ddd}", async (string ddd, AppDbContext dbContext) =>
 {
-    // Validar se o DDD tem 2 dígitos e é numérico
+    // Validar se o DDD tem 2 dï¿½gitos e ï¿½ numï¿½rico
     if (ddd.Length != 2 || !ddd.All(char.IsDigit))
     {
-        return Results.BadRequest("O DDD deve conter exatamente 2 dígitos numéricos.");
+        return Results.BadRequest("O DDD deve conter exatamente 2 dï¿½gitos numï¿½ricos.");
     }
 
-    // Buscar contatos cujo telefone começa com o DDD
+    // Buscar contatos cujo telefone comeï¿½a com o DDD
     var contacts = await dbContext.Contacts
         .Where(c => c.Telefone.StartsWith(ddd))
         .ToListAsync();
@@ -69,10 +69,12 @@ app.MapGet("/contacts/by-ddd/{ddd}", async (string ddd, AppDbContext dbContext) 
     return Results.Ok(contacts);
 });
 
-//app.UseHttpMetrics();  // Coleta de métricas HTTP automáticas
+//app.UseHttpMetrics();  // Coleta de mï¿½tricas HTTP automï¿½ticas
 
 // Exponha o endpoint /metrics
 //app.MapMetrics();
+
+app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }));
 
 app.UseHttpsRedirection();
 

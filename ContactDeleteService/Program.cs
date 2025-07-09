@@ -25,7 +25,7 @@ app.MapDelete("/contatos/deleteID/{id}", (int id) =>
     var rabbitMqHost = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "host.docker.internal";
     var rabbitMqPort = int.Parse(Environment.GetEnvironmentVariable("RABBITMQ_PORT") ?? "5672");
 
-    // Configuração do RabbitMQ
+    // Configuraï¿½ï¿½o do RabbitMQ
     var factory = new ConnectionFactory() 
     {   
         HostName = rabbitMqHost,
@@ -34,7 +34,7 @@ app.MapDelete("/contatos/deleteID/{id}", (int id) =>
     using var connection = factory.CreateConnection();
     using var channel = connection.CreateModel();
 
-    // Declaração da fila de exclusão de contatos
+    // Declaraï¿½ï¿½o da fila de exclusï¿½o de contatos
     channel.QueueDeclare(queue: "delete_contact_queue",
                          durable: false,
                          exclusive: false,
@@ -45,16 +45,18 @@ app.MapDelete("/contatos/deleteID/{id}", (int id) =>
     var message = id.ToString();
     var body = Encoding.UTF8.GetBytes(message);
 
-    // Publica a mensagem na fila de exclusão
+    // Publica a mensagem na fila de exclusï¿½o
     channel.BasicPublish(exchange: "",
                          routingKey: "delete_contact_queue",
                          basicProperties: null,
                          body: body);
 
-    return Results.Ok($"Contato de ID: {id} Enviado para deleção!.");
+    return Results.Ok($"Contato de ID: {id} Enviado para deleï¿½ï¿½o!.");
 });
 
-app.UseHttpMetrics();  // Coleta de métricas HTTP automáticas
+app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }));
+
+app.UseHttpMetrics();  // Coleta de mï¿½tricas HTTP automï¿½ticas
 
 // Exponha o endpoint /metrics
 app.MapMetrics();

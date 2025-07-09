@@ -54,7 +54,13 @@ app.MapDelete("/contatos/deleteID/{id}", (int id) =>
     return Results.Ok($"Contato de ID: {id} Enviado para dele��o!.");
 });
 
-app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }));
+//Simula falha no health check
+app.MapGet("/health", () => Results.Problem(
+    statusCode: 500,
+    detail: "Simulando falha no health check"
+));
+
+//app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }));
 
 app.UseHttpMetrics();  // Coleta de m�tricas HTTP autom�ticas
 

@@ -56,4 +56,35 @@ A aplicação é composta por diversos **microsserviços**, cada um com uma resp
   - **Buildar** os serviços com Docker.
   - **Publicar** as imagens no Docker Hub.
   - **Efetuar deploy automático** para o AKS.
-  - As **credenciais** estão armazenadas de forma segura usando `GitHub Secrets`.
+- As **credenciais** estão armazenadas de forma segura usando `GitHub Secrets`.
+
+---
+
+## 🧪 Como Executar Localmente (opcional)
+
+> Caso o professor deseje testar localmente:
+
+1. Instalar Docker e .NET 8 SDK.
+2. Clonar o repositório:
+   ```bash
+   git clone https://github.com/seu-usuario/nome-do-repo.git
+   ```
+3. Executar com Docker Compose (caso configurado):
+   ```bash
+   docker-compose up
+   ```
+
+---
+
+## 👨‍🏫 Observações para Avaliação
+
+- Toda a aplicação foi criada com foco em boas práticas DevOps e Cloud Native.
+- O sistema é **modular**, com **health checks** em todos os serviços, **CI/CD funcional** e pronto para escalar horizontalmente.
+- Cada serviço implementa apenas uma responsabilidade específica (CRUD, leitura, persistência, etc.), seguindo os princípios de separação de preocupações e arquitetura limpa.
+- Todos os microsserviços implementam **endpoints de Health Check**, permitindo que o Kubernetes monitore e reinicie automaticamente qualquer serviço que falhe, garantindo **resiliência e disponibilidade contínua**.
+
+---
+
+## 👨‍💻 Autor
+
+- **Antony Nascimento** — Pós-graduação FIAP — Arquitetura de Sistemas .Net com Azure

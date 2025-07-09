@@ -87,3 +87,12 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
             successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1

@@ -165,6 +165,14 @@ jobs:
         az aks get-credentials --resource-group ${{ env.AKS_RESOURCE_GROUP }} --name ${{ env.AKS_CLUSTER }}
         echo "✅ AKS credentials configured"
 
+    - name: Aplicar manifestos K8s
+      run: |
+        for dir in ./K8s/*/
+        do
+          echo "Aplicando manifestos em $dir"
+          kubectl apply -f "$dir"
+        done
+
     - name: Deploy de todos os serviços
       run: |
         IMAGE_TAG="${{ needs.build-images.outputs.image-tag }}"
@@ -191,14 +199,6 @@ jobs:
           -n ${{ env.AKS_NAMESPACE }}
         
         echo "✅ Todos os serviços atualizados"
-
-    - name: Aplicar manifestos K8s
-      run: |
-        for dir in ./K8s/*/
-        do
-          echo "Aplicando manifestos em $dir"
-          kubectl apply -f "$dir"
-        done
       
     - name: Verificar deployments
       run: |

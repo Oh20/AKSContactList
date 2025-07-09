@@ -218,11 +218,11 @@ jobs:
         
         # Test ContactQuery (IP fixo: 4.227.111.249)
         echo "Testando ContactQuery service..."
-        curl -f http://4.227.111.249/health || echo "⚠️ ContactQuery health check failed"
+        curl -f http://4.227.111.249/health || echo "⚠️ ContactQuery health check falhou"
         
         # Test DBConsumer (IP fixo: 4.227.109.110)
         echo "Testando DBConsumer service..."
-        curl -f http://4.227.109.110/health || echo "⚠️ DBConsumer health check failed"
+        curl -f http://4.227.109.110/health || echo "⚠️ DBConsumer health check falhou"
         
         echo "✅ Health checks concluido"
 
@@ -233,12 +233,12 @@ jobs:
         echo "🔖 Commit: ${{ github.sha }}"
         echo "🏷️  Image Tag: ${{ needs.build-images.outputs.image-tag }}"
         echo "🌍 Environment: ${{ github.event.inputs.environment || 'production' }}"
-        echo "📅 Deployed at: $(date)"
+        echo "📅 Deployado em: $(date)"
         echo ""
-        echo "🎯 Services Status:"
+        echo "🎯 Status dos Serviços:"
         kubectl get pods -n ${{ env.AKS_NAMESPACE }} -o wide
         echo ""
-        echo "🌐 Services Endpoints:"
+        echo "🌐 Endpoints dos Serviços:"
         kubectl get svc -n ${{ env.AKS_NAMESPACE }}
         echo ""
         echo "🎉 Deployment concluido com sucesso!"

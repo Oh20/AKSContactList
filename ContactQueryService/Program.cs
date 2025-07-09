@@ -48,7 +48,7 @@ app.MapGet("/contatos/{id}", async (int id, AppDbContext dbContext) =>
     return Results.Ok(contact);
 });
 
-app.MapGet("/contacts/by-ddd/{ddd}", async (string ddd, AppDbContext dbContext) =>
+app.MapGet("/contatos/por-ddd/{ddd}", async (string ddd, AppDbContext dbContext) =>
 {
     // Validar se o DDD tem 2 d�gitos e � num�rico
     if (ddd.Length != 2 || !ddd.All(char.IsDigit))

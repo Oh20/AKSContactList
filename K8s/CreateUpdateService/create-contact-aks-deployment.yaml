@@ -4,7 +4,7 @@ metadata:
   name: create-contact-deployment
   namespace: messaging
 spec:
-  replicas: 3
+  replicas: 5
   selector:
     matchLabels:
       app: create-contact

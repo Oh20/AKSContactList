@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 [TestFixture]
 public class ContactCreateUpdateServiceTests
@@ -11,6 +13,7 @@ public class ContactCreateUpdateServiceTests
     private Mock<IConnectionFactory> _connectionFactoryMock;
     private Mock<IModel> _channelMock;
     private Mock<IConnection> _connectionMock;
+    private DbContextOptions<AppDbContext> _dbContextOptions;
 
     [SetUp]
     public void Setup()
@@ -22,6 +25,11 @@ public class ContactCreateUpdateServiceTests
         // Setup para mocks de RabbitMQ
         _connectionFactoryMock.Setup(f => f.CreateConnection()).Returns(_connectionMock.Object);
         _connectionMock.Setup(c => c.CreateModel()).Returns(_channelMock.Object);
+
+        // Configurar banco de dados em memória para testes
+        _dbContextOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: $"ContactCreateUpdateTestDb_{Guid.NewGuid()}")
+            .Options;
     }
 
     [Test]
@@ -107,6 +115,135 @@ public class ContactCreateUpdateServiceTests
 
         // Assert
         Assert.IsInstanceOf<BadRequest<string>>(result);
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task CreateContact_ShouldSaveToDatabase_WhenUsingInMemoryDatabase()
+    {
+        // Arrange
+        using var dbContext = new AppDbContext(_dbContextOptions);
+        var contact = new Contact
+        {
+            Nome = "João Silva",
+            Telefone = "11987654321",
+            Email = "joao@example.com"
+        };
+
+        // Act
+        dbContext.Contacts.Add(contact);
+        await dbContext.SaveChangesAsync();
+
+        // Assert
+        var savedContact = await dbContext.Contacts.FirstOrDefaultAsync(c => c.Email == "joao@example.com");
+        Assert.IsNotNull(savedContact);
+        Assert.AreEqual("João Silva", savedContact.Nome);
+        Assert.AreEqual("11987654321", savedContact.Telefone);
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task UpdateContact_ShouldUpdateInDatabase_WhenUsingInMemoryDatabase()
+    {
+        // Arrange
+        using var dbContext = new AppDbContext(_dbContextOptions);
+        var contact = new Contact
+        {
+            Nome = "João Silva",
+            Telefone = "11987654321",
+            Email = "joao@example.com"
+        };
+
+        dbContext.Contacts.Add(contact);
+        await dbContext.SaveChangesAsync();
+
+        // Act - Atualizar o contato
+        var contactToUpdate = await dbContext.Contacts.FirstOrDefaultAsync(c => c.Email == "joao@example.com");
+        contactToUpdate.Telefone = "11987654322";
+        contactToUpdate.Email = "joao.novo@example.com";
+        await dbContext.SaveChangesAsync();
+
+        // Assert
+        var updatedContact = await dbContext.Contacts.FirstOrDefaultAsync(c => c.Nome == "João Silva");
+        Assert.IsNotNull(updatedContact);
+        Assert.AreEqual("11987654322", updatedContact.Telefone);
+        Assert.AreEqual("joao.novo@example.com", updatedContact.Email);
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task CreateContact_ShouldNotSaveDuplicate_WhenContactAlreadyExists()
+    {
+        // Arrange
+        using var dbContext = new AppDbContext(_dbContextOptions);
+        var contact1 = new Contact
+        {
+            Nome = "João Silva",
+            Telefone = "11987654321",
+            Email = "joao@example.com"
+        };
+
+        var contact2 = new Contact
+        {
+            Nome = "João Silva",
+            Telefone = "11987654321",
+            Email = "joao@example.com"
+        };
+
+        // Act
+        dbContext.Contacts.Add(contact1);
+        await dbContext.SaveChangesAsync();
+
+        dbContext.Contacts.Add(contact2);
+        await dbContext.SaveChangesAsync();
+
+        // Assert - Deve ter apenas um contato
+        var allContacts = await dbContext.Contacts.Where(c => c.Email == "joao@example.com").ToListAsync();
+        Assert.AreEqual(1, allContacts.Count);
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task ValidateContact_ShouldPass_WhenContactIsValid()
+    {
+        // Arrange
+        var contact = new ContactDto
+        {
+            Nome = "João Silva",
+            Telefone = "11987654321",
+            Email = "joao@example.com"
+        };
+
+        // Act
+        var validationContext = new ValidationContext(contact);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(contact, validationContext, validationResults, true);
+
+        // Assert
+        Assert.IsTrue(isValid);
+        Assert.AreEqual(0, validationResults.Count);
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task ValidateContact_ShouldFail_WhenContactIsInvalid()
+    {
+        // Arrange
+        var contact = new ContactDto
+        {
+            Nome = "",
+            Telefone = "123",
+            Email = "invalid-email"
+        };
+
+        // Act
+        var validationContext = new ValidationContext(contact);
+        var validationResults = new List<ValidationResult>();
+        var isValid = Validator.TryValidateObject(contact, validationContext, validationResults, true);
+
+        // Assert
+        Assert.IsFalse(isValid);
+        Assert.Greater(validationResults.Count, 0);
     }
 
     // Métodos de simulação (emular o comportamento da API minimalista)

@@ -1,0 +1,122 @@
+name: Testes com Banco de Dados
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Tipo de teste a executar'
+        required: true
+        default: 'integration'
+        type: choice
+        options:
+          - integration
+          - database
+          - all
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  test-with-database:
+    name: Testes com Banco de Dados
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Descobrir IP do Runner
+      id: runner-ip
+      run: |
+        RUNNER_IP=$(curl -s https://api.ipify.org)
+        echo "IP do Runner: $RUNNER_IP"
+        echo "runner-ip=$RUNNER_IP" >> $GITHUB_OUTPUT
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Configurar Firewall do Azure SQL Server
+      run: |
+        RUNNER_IP="${{ steps.runner-ip.outputs.runner-ip }}"
+        echo "Configurando firewall para IP: $RUNNER_IP"
+        
+        # Adicionar IP do runner ao firewall do Azure SQL Server
+        az sql server firewall-rule create \
+          --resource-group Az-lab \
+          --server freetiertestdb \
+          --name "github-runner-${{ github.run_id }}" \
+          --start-ip-address "$RUNNER_IP" \
+          --end-ip-address "$RUNNER_IP" \
+          --output none
+        
+        echo "✅ Firewall configurado para IP: $RUNNER_IP"
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build all projects
+      run: |
+        dotnet build --configuration Release --no-restore
+        echo "✅ Build concluido com sucesso"
+
+    - name: Executar Testes de Integração
+      if: github.event.inputs.test_type == 'integration' || github.event.inputs.test_type == 'all'
+      run: |
+        echo "🧪 Executando testes de integração..."
+        dotnet test ./DBConsumer.Tests/DBConsumer.Tests.csproj --no-build --verbosity normal --filter "Category=DatabaseIntegration"
+
+    - name: Executar Testes de Conexão com Banco
+      if: github.event.inputs.test_type == 'database' || github.event.inputs.test_type == 'all'
+      run: |
+        echo "🧪 Executando testes de conexão com banco..."
+        dotnet test ./DatabaseConnectionTests/DatabaseConnectionTests.csproj --no-build --verbosity normal
+
+    - name: Executar Todos os Testes
+      if: github.event.inputs.test_type == 'all'
+      run: |
+        echo "🧪 Executando todos os testes..."
+        dotnet test ./ContactCreateUpdateService.Tests/ContactCreateUpdateService.Tests.csproj --no-build --verbosity normal
+        dotnet test ./ContactQueryService.Tests/ContactQueryService.Tests.csproj --no-build --verbosity normal
+        dotnet test ./DBConsumer.Tests/DBConsumer.Tests.csproj --no-build --verbosity normal
+        dotnet test ./DatabaseConnectionTests/DatabaseConnectionTests.csproj --no-build --verbosity normal
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-with-db
+        path: '**/TestResults/*.trx'
+
+    - name: Limpar Firewall do Azure SQL Server
+      if: always()
+      run: |
+        RUNNER_IP="${{ steps.runner-ip.outputs.runner-ip }}"
+        echo "Removendo regra de firewall para IP: $RUNNER_IP"
+        
+        # Remover regra de firewall criada para este runner
+        az sql server firewall-rule delete \
+          --resource-group Az-lab \
+          --server freetiertestdb \
+          --name "github-runner-${{ github.run_id }}" \
+          --output none || true
+        
+        echo "✅ Firewall limpo"
+
+    - name: Resumo dos Testes
+      if: always()
+      run: |
+        echo "📊 RESUMO DOS TESTES"
+        echo "==================="
+        echo "🔖 Commit: ${{ github.sha }}"
+        echo "🧪 Tipo de Teste: ${{ github.event.inputs.test_type }}"
+        echo "📅 Executado em: $(date)"
+        echo "🌐 IP do Runner: ${{ steps.runner-ip.outputs.runner-ip }}"
+        echo ""
+        echo "✅ Testes concluidos!" 

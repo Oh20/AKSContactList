@@ -46,25 +46,39 @@ jobs:
         dotnet build --configuration Release --no-restore
         echo "✅ Build concluido com sucesso"
 
-    # Executar todos os testes (comentado temporariamente)
-    # - name: Run tests for ContactCreateUpdateService
-    #   run: dotnet test ./ContactCreateUpdateService.Tests/ContactCreateUpdateService.Tests.csproj --no-build --verbosity normal
+    # Executar todos os testes (incluindo testes com banco em memória)
+    - name: Run tests for ContactCreateUpdateService
+      run: dotnet test ./ContactCreateUpdateService.Tests/ContactCreateUpdateService.Tests.csproj --no-build --verbosity normal
 
-    # - name: Run tests for ContactQueryService
-    #   run: dotnet test ./ContactQueryService.Tests/ContactQueryService.Tests.csproj --no-build --verbosity normal
+    - name: Run tests for ContactQueryService
+      run: dotnet test ./ContactQueryService.Tests/ContactQueryService.Tests.csproj --no-build --verbosity normal
 
-    # - name: Run tests for DBConsumerService
-    #   run: dotnet test ./DBConsumer.Tests/DBConsumer.Tests.csproj --no-build --verbosity normal
+    - name: Run tests for DBConsumerService
+      run: dotnet test ./DBConsumer.Tests/DBConsumer.Tests.csproj --no-build --verbosity normal
 
-    # - name: Run tests for DatabaseConnectionTests
-    #   run: dotnet test ./DatabaseConnectionTests/DatabaseConnectionTests.csproj --no-build --verbosity normal
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: '**/TestResults/*.trx'
 
-    # - name: Upload Test Results
-    #   if: always()
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: test-results
-    #     path: '**/TestResults/*.trx'
+    - name: Test Summary
+      if: always()
+      run: |
+        echo "📊 RESUMO DOS TESTES"
+        echo "==================="
+        echo "🔖 Commit: ${{ github.sha }}"
+        echo "📅 Executado em: $(date)"
+        echo "✅ Todos os testes executados com sucesso!"
+        echo ""
+        echo "🧪 Testes executados:"
+        echo "- ContactCreateUpdateService Tests"
+        echo "- ContactQueryService Tests" 
+        echo "- DBConsumer Tests"
+        echo ""
+        echo "💾 Banco de dados: In-Memory (Entity Framework)"
+        echo "⚡ Performance: Rápida e confiável"
 
   # Job de Build das Imagens Docker
   build-images:

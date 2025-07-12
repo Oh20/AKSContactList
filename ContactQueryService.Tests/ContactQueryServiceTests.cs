@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Net.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 [TestFixture]
 public class ContactQueryServiceTests
@@ -13,6 +15,7 @@ public class ContactQueryServiceTests
     private Mock<IConnectionFactory> _connectionFactoryMock;
     private Mock<IModel> _channelMock;
     private Mock<IConnection> _connectionMock;
+    private DbContextOptions<AppDbContext> _dbContextOptions;
 
     [SetUp]
     public void Setup()
@@ -24,6 +27,11 @@ public class ContactQueryServiceTests
         // Setup para mocks de RabbitMQ
         _connectionFactoryMock.Setup(f => f.CreateConnection()).Returns(_connectionMock.Object);
         _connectionMock.Setup(c => c.CreateModel()).Returns(_channelMock.Object);
+
+        // Configurar banco de dados em memória para testes
+        _dbContextOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: $"ContactQueryTestDb_{Guid.NewGuid()}")
+            .Options;
     }
 
     [Test]
@@ -37,7 +45,7 @@ public class ContactQueryServiceTests
             new ContactDto { Nome = "Jane Smith", Telefone = "129876543", Email = "jane@example.com" }
         };
 
-        // Simula��o do retorno de contatos com o DDD especificado
+        // Simulação do retorno de contatos com o DDD especificado
         var httpContext = new DefaultHttpContext();
 
         // Act
@@ -54,7 +62,7 @@ public class ContactQueryServiceTests
     public async Task GetContactByDDD_ShouldReturnNotFound_WhenNoContactsExist()
     {
         // Arrange
-        var ddd = "00"; // DDD inv�lido para simula��o
+        var ddd = "00"; // DDD inválido para simulação
         var httpContext = new DefaultHttpContext();
 
         // Act
@@ -65,7 +73,106 @@ public class ContactQueryServiceTests
         Assert.IsInstanceOf<NotFound<string>>(result);
     }
 
-    // M�todos simulando o comportamento da API
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task GetAllContacts_ShouldReturnContacts_WhenUsingInMemoryDatabase()
+    {
+        // Arrange
+        using var dbContext = new AppDbContext(_dbContextOptions);
+        
+        // Adicionar contatos de teste
+        var testContacts = new List<Contact>
+        {
+            new Contact { Nome = "João Silva", Telefone = "11987654321", Email = "joao@example.com" },
+            new Contact { Nome = "Maria Santos", Telefone = "21987654322", Email = "maria@example.com" },
+            new Contact { Nome = "Pedro Costa", Telefone = "31987654323", Email = "pedro@example.com" }
+        };
+
+        await dbContext.Contacts.AddRangeAsync(testContacts);
+        await dbContext.SaveChangesAsync();
+
+        // Act
+        var allContacts = await dbContext.Contacts.ToListAsync();
+
+        // Assert
+        Assert.AreEqual(3, allContacts.Count);
+        Assert.IsTrue(allContacts.Any(c => c.Nome == "João Silva"));
+        Assert.IsTrue(allContacts.Any(c => c.Nome == "Maria Santos"));
+        Assert.IsTrue(allContacts.Any(c => c.Nome == "Pedro Costa"));
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task GetContactsByDDD_ShouldReturnFilteredContacts_WhenUsingInMemoryDatabase()
+    {
+        // Arrange
+        using var dbContext = new AppDbContext(_dbContextOptions);
+        
+        // Adicionar contatos de teste com diferentes DDDs
+        var testContacts = new List<Contact>
+        {
+            new Contact { Nome = "João Silva", Telefone = "11987654321", Email = "joao@example.com" },
+            new Contact { Nome = "Maria Santos", Telefone = "21987654322", Email = "maria@example.com" },
+            new Contact { Nome = "Pedro Costa", Telefone = "11987654323", Email = "pedro@example.com" }
+        };
+
+        await dbContext.Contacts.AddRangeAsync(testContacts);
+        await dbContext.SaveChangesAsync();
+
+        // Act - Buscar contatos com DDD 11
+        var ddd11Contacts = await dbContext.Contacts
+            .Where(c => c.Telefone.StartsWith("11"))
+            .ToListAsync();
+
+        // Assert
+        Assert.AreEqual(2, ddd11Contacts.Count);
+        Assert.IsTrue(ddd11Contacts.All(c => c.Telefone.StartsWith("11")));
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task GetContactById_ShouldReturnContact_WhenContactExists()
+    {
+        // Arrange
+        using var dbContext = new AppDbContext(_dbContextOptions);
+        
+        var testContact = new Contact 
+        { 
+            Nome = "João Silva", 
+            Telefone = "11987654321", 
+            Email = "joao@example.com" 
+        };
+
+        await dbContext.Contacts.AddAsync(testContact);
+        await dbContext.SaveChangesAsync();
+
+        var contactId = testContact.Id;
+
+        // Act
+        var foundContact = await dbContext.Contacts.FindAsync(contactId);
+
+        // Assert
+        Assert.IsNotNull(foundContact);
+        Assert.AreEqual("João Silva", foundContact.Nome);
+        Assert.AreEqual("11987654321", foundContact.Telefone);
+        Assert.AreEqual("joao@example.com", foundContact.Email);
+    }
+
+    [Test]
+    [Category("DatabaseIntegration")]
+    public async Task GetContactById_ShouldReturnNull_WhenContactDoesNotExist()
+    {
+        // Arrange
+        using var dbContext = new AppDbContext(_dbContextOptions);
+
+        // Act
+        var foundContact = await dbContext.Contacts.FindAsync(999);
+
+        // Assert
+        Assert.IsNull(foundContact);
+    }
+
+    // Métodos simulando o comportamento da API
     public static IResult GetContactsByDDD(string ddd, HttpContext httpContext)
     {
         var contacts = new List<ContactDto>
@@ -85,6 +192,7 @@ public class ContactQueryServiceTests
             return Results.NotFound($"Nenhum contato encontrado com o DDD {ddd}");
         }
     }
+
     // DTO
     public class ContactDto
     {

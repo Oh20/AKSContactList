@@ -46,7 +46,7 @@ jobs:
         dotnet build --configuration Release --no-restore
         echo "✅ Build concluido com sucesso"
 
-    # Executar todos os testes (incluindo testes com banco em memória)
+    # Executar todos os testes
     - name: Run tests for ContactCreateUpdateService
       run: dotnet test ./ContactCreateUpdateService.Tests/ContactCreateUpdateService.Tests.csproj --no-build --verbosity normal
 
